@@ -1,14 +1,15 @@
-FROM python:3.11
+FROM python:3.11-slim
 
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir gunicorn
 
-COPY . /app
+COPY . .
 
-ENV PYTHONPATH ${PYTHONPATH}:'/app'
-ENV FLASK_RUN_RELOAD=true
+ENV FLASK_APP=server:app
 
-ENTRYPOINT ["flask", "--app", "app", "run", "-h", "0.0.0.0", "-p", "8080"]
+ENV PORT=8080
 
+CMD ["sh", "-c", "gunicorn -b 0.0.0.0:${PORT:-8080} server:app"]
