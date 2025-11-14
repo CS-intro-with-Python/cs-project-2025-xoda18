@@ -10,7 +10,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: build_docker_image
-        run: docker build -t my-container .
+        run: docker build -t app .
 
       - name: run_docker_container
         run: docker run -d --rm -p 8080:8080 --name my-container app
