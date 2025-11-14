@@ -1,5 +1,8 @@
 # Simple Flask Hello Service
 
+This project is a small web server written with Flask and a tiny client script that checks if the server works.
+
+
 ## Project Structure
 
 - `server.py` – Flask app exposing:
@@ -15,7 +18,7 @@
 
 - Python 3.8+
 - `pip` for installing dependencies
-- Docker, if you want to run it in a container
+-  Docker, if you want to run it in a container
 
 Install dependencies:
 
