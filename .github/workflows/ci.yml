@@ -1,0 +1,26 @@
+name: CI
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: build_docker_image
+        run: docker build -t my-container .
+
+      - name: run_docker_container
+        run: docker run -d --rm -p 8080:8080 --name my-container app
+
+      - name: install_requirements
+        run: pip3 install -r requirements.txt
+
+      - name: run_client
+        run: ./run_client.sh
+
+      - name: stop_container
+        if: always()
+        run: docker stop app || true
