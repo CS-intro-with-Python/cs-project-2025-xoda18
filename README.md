@@ -1,18 +1,23 @@
-## Flask Docker simple app
+# Simple Flask Hello Service
 
-### Preparation
+## Project Structure
 
-Test that the server on Flask works without Docker.
+- `server.py` – Flask app exposing:
+  - `GET /hello` – returns `Hello, world!`
+  - `GET /hi` – redirects to an external URL
+- `client.py` – Python script that sends a `GET` request to `http://localhost:8080/hello` and exits with:
+  - code `0` if the server responds with status `200`
+  - code `1` otherwise
+- `run_client.sh` – shell script that runs `client.py` up to 10 times, waiting 1 second between attempts
+- `requirements.txt` – Python dependencies
 
-### Docker container running
+## Requirements
 
- - Fill in the Dockerfile
- - Build the image, assigning it a tag for Docker Hub.
- - Run the container from the image you just built, forwarding the port from the host machine to the container port. Choose the port yourself; it can be the same or different.
- - Check that the application is working.
+- Python 3.8+
+- `pip` for installing dependencies
+- Docker, if you want to run it in a container
 
-### DockerHub
+Install dependencies:
 
- - Run the command docker login in the terminal and enter your Docker Hub login and password.
- - Upload your image to Docker Hub.
- - Go to your profile at https://hub.docker.com/ and check.
+```bash
+pip install -r requirements.txt
