@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h3>Admin panel</h3>
+    <p><small>Shows users, servers stats, keys list, and log tail.</small></p>
+</div>
+
+<div class="card">
+    <h4>Add server</h4>
+    <form method="post" action="{{ url_for('admin_add_server') }}">
+        <label>Server name</label>
+        <input name="name" placeholder="Server #3">
+        <br><br>
+        <button class="btn" type="submit">Add</button>
+    </form>
+</div>
+
+<div class="card">
+    <h4>Add keys</h4>
+    <form method="post" action="{{ url_for('admin_add_keys') }}">
+        <label>Server</label>
+        <select name="server_id">
+            {% for s in servers %}
+            <option value="{{ s.id }}">{{ s.id }} - {{ s.name }}</option>
+            {% endfor %}
+        </select>
+        <br><br>
+        <label>Keys (one per line)</label>
+        <textarea name="keys" rows="6" placeholder="vless://...."></textarea>
+        <br><br>
+        <button class="btn" type="submit">Add keys</button>
+    </form>
+</div>
+
+<div class="card">
+    <h4>Servers</h4>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Total</th>
+            <th>Assigned</th>
+            <th>Free</th>
+        </tr>
+        {% for s in servers %}
+        <tr>
+            <td>{{ s.id }}</td>
+            <td>{{ s.name }}</td>
+            <td>{{ s.total }}</td>
+            <td>{{ s.assigned }}</td>
+            <td>{{ s.free }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<div class="card">
+    <h4>Users</h4>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Admin</th>
+            <th>Created</th>
+            <th>Has key?</th>
+        </tr>
+        {% for u in users %}
+        <tr>
+            <td>{{ u.id }}</td>
+            <td>{{ u.username }}</td>
+            <td>{{ "yes" if u.is_admin else "no" }}</td>
+            <td>{{ u.created_at }}</td>
+            <td>
+                {% set has_key = false %}
+                {% for k in keys %}
+                {% if k.assigned_user_id == u.id %}
+                {% set has_key = true %}
+                {% endif %}
+                {% endfor %}
+                {{ "yes" if has_key else "no" }}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<div class="card">
+    <h4>Keys (first 200)</h4>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Server</th>
+            <th>Assigned user</th>
+            <th>Key (short)</th>
+        </tr>
+        {% for k in keys %}
+        <tr>
+            <td>{{ k.id }}</td>
+            <td>{{ k.server_id }}</td>
+            <td>{{ k.assigned_user_id or "" }}</td>
+            <td><small>{{ (k.key_text[:80] ~ ("..." if k.key_text|length > 80 else "")) }}</small></td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<div class="card">
+    <h4>Logs (tail)</h4>
+    <pre>{{ log_text }}</pre>
+</div>
+{% endblock %}

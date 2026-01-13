@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h3>Dashboard</h3>
+    <p>Hello, <b>{{ user.username }}</b></p>
+
+    {% if key %}
+    <p>Your VLESS key (server_id={{ key.server_id }}):</p>
+    <pre id="key">{{ key.key_text }}</pre>
+    <div class="row">
+        <button class="btn" id="copyBtn">Copy</button>
+        <button class="btn" id="deleteBtn">Delete key</button>
+    </div>
+    <p><small>You can delete and request again (may get another key).</small></p>
+    {% else %}
+    <p>You don't have a key yet.</p>
+    <button class="btn" id="getBtn">Get key</button>
+    {% endif %}
+
+    <p class="error" id="err"></p>
+</div>
+
+<script>
+    const errEl = document.getElementById("err");
+
+    async function postJson(url) {
+        const r = await fetch(url, {method: "POST"});
+        const data = await r.json().catch(() => ({}));
+        return {ok: r.ok, status: r.status, data};
+    }
+
+    const getBtn = document.getElementById("getBtn");
+    if (getBtn) {
+        getBtn.onclick = async () => {
+            errEl.textContent = "";
+            const res = await postJson("/api/key");
+            if (!res.ok) {
+                errEl.textContent = res.data.error || ("Error " + res.status);
+                return;
+            }
+            location.reload();
+        };
+    }
+
+    const deleteBtn = document.getElementById("deleteBtn");
+    if (deleteBtn) {
+        deleteBtn.onclick = async () => {
+            errEl.textContent = "";
+            const res = await postJson("/api/key/delete");
+            if (!res.ok) {
+                errEl.textContent = res.data.error || ("Error " + res.status);
+                return;
+            }
+            location.reload();
+        };
+    }
+
+    const copyBtn = document.getElementById("copyBtn");
+    if (copyBtn) {
+        copyBtn.onclick = async () => {
+            const txt = document.getElementById("key").innerText;
+            try {
+                await navigator.clipboard.writeText(txt);
+                copyBtn.textContent = "Copied!";
+                setTimeout(() => copyBtn.textContent = "Copy", 1200);
+            } catch (e) {
+                errEl.textContent = "Copy failed (browser permissions).";
+            }
+        };
+    }
+</script>
+{% endblock %}
