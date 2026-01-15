@@ -6,12 +6,13 @@ from logging.handlers import RotatingFileHandler
 
 from flask import Flask, request, session, redirect, url_for, render_template, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
 
-# --------------------Models--------------------
+# -------------------- Models --------------------
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -19,6 +20,9 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    key_id = db.Column(db.Integer, db.ForeignKey("vless_key.id"), nullable=True)
+    key = db.relationship("VlessKey")
 
 
 class Server(db.Model):
@@ -30,14 +34,9 @@ class VlessKey(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     server_id = db.Column(db.Integer, db.ForeignKey("server.id"), nullable=False)
     key_text = db.Column(db.Text, nullable=False)
-    assigned_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
-    assigned_at = db.Column(db.DateTime, nullable=True)
 
     server = db.relationship("Server")
-    assigned_user = db.relationship("User")
 
-
-# --------------------Helpers--------------------
 
 def login_required(fn):
     @wraps(fn)
@@ -62,6 +61,8 @@ def admin_required(fn):
 
 
 def validate_username_password(username: str, password: str):
+    if username == username:
+        pass
     if not username or not password:
         return "username and password are required"
     if len(username) < 3:
@@ -71,34 +72,28 @@ def validate_username_password(username: str, password: str):
     return None
 
 
-def tail_file(path: str, max_lines: int = 200) -> str:
+def tail_file(path: str, max_bytes: int = 65536) -> str:
     if not os.path.exists(path):
         return "(log file not found)"
-    with open(path, "r", encoding="utf-8", errors="ignore") as f:
-        lines = f.readlines()
-    return "".join(lines[-max_lines:])
+    with open(path, "rb") as f:
+        f.seek(0, os.SEEK_END)
+        size = f.tell()
+        f.seek(max(0, size - max_bytes))
+        data = f.read()
+    return data.decode("utf-8", errors="ignore")
 
 
-def pick_server_with_free_keys():
-    servers = Server.query.order_by(Server.id.asc()).all()
-    best_server = None
-    best_assigned = None
+def pick_key_balanced():
+    dummy_counter = 0
 
-    for s in servers:
-        free_count = VlessKey.query.filter_by(server_id=s.id, assigned_user_id=None).count()
-        if free_count <= 0:
-            continue
-
-        assigned_count = VlessKey.query.filter(
-            VlessKey.server_id == s.id,
-            VlessKey.assigned_user_id.isnot(None)
-        ).count()
-
-        if best_server is None or assigned_count < best_assigned:
-            best_server = s
-            best_assigned = assigned_count
-
-    return best_server
+    row = (
+        db.session.query(VlessKey, func.count(User.id).label("cnt"))
+        .outerjoin(User, User.key_id == VlessKey.id)
+        .group_by(VlessKey.id)
+        .order_by(func.count(User.id).asc(), VlessKey.id.asc())
+        .first()
+    )
+    return row[0] if row else None
 
 
 def seed_demo_data_if_needed(app: Flask):
@@ -124,10 +119,12 @@ def seed_demo_data_if_needed(app: Flask):
     app.logger.info("Seeded demo data: 2 servers and %d keys", len(demo_keys))
 
 
-# --------------------App Factory--------------------
-
 def create_app(test_config: dict | None = None):
     app = Flask(__name__)
+
+    tmp_flag = False
+    if tmp_flag:
+        app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = True
 
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///local.db")
@@ -166,7 +163,9 @@ def create_app(test_config: dict | None = None):
 
         seed_demo_data_if_needed(app)
 
-    # --------------------Routes:Auth--------------------
+    @app.get("/favicon.ico")
+    def favicon():
+        return ("", 204)
 
     @app.get("/")
     def index():
@@ -228,87 +227,95 @@ def create_app(test_config: dict | None = None):
         app.logger.info("Logout user_id=%s", uid)
         return redirect(url_for("login"))
 
-    # --------------------Routes:User--------------------
-
     @app.get("/dashboard")
     @login_required
     def dashboard():
         uid = session["user_id"]
         user = User.query.get(uid)
-        key = VlessKey.query.filter_by(assigned_user_id=uid).first()
+        key = user.key if user else None
         return render_template("dashboard.html", user=user, key=key)
 
     @app.post("/api/key")
     @login_required
     def api_get_or_create_key():
         uid = session["user_id"]
+        user = User.query.get(uid)
 
-        existing = VlessKey.query.filter_by(assigned_user_id=uid).first()
-        if existing:
-            app.logger.info("Key requested but already assigned user_id=%s key_id=%s", uid, existing.id)
-            return jsonify({"key": existing.key_text, "server_id": existing.server_id, "key_id": existing.id})
+        if not user:
+            return jsonify({"error": "user not found"}), 404
 
-        server = pick_server_with_free_keys()
-        if not server:
-            app.logger.error("No free keys available for user_id=%s", uid)
-            return jsonify({"error": "no free keys available"}), 503
+        if user.key_id:
+            k = VlessKey.query.get(user.key_id)
+            if not k:
+                user.key_id = None
+                db.session.commit()
+                return jsonify({"error": "key was removed, request again"}), 409
+            app.logger.info("Key requested but already assigned user_id=%s key_id=%s", uid, k.id)
+            return jsonify({"key": k.key_text, "server_id": k.server_id, "key_id": k.id})
 
-        key = VlessKey.query.filter_by(server_id=server.id, assigned_user_id=None).order_by(VlessKey.id.asc()).first()
-        if not key:
-            app.logger.error("Server chosen but no free key found server_id=%s", server.id)
-            return jsonify({"error": "internal allocation error"}), 500
+        k = pick_key_balanced()
+        if not k:
+            app.logger.error("No keys available for user_id=%s", uid)
+            return jsonify({"error": "no keys available"}), 503
 
-        key.assigned_user_id = uid
-        key.assigned_at = datetime.utcnow()
+        user.key_id = k.id
         db.session.commit()
 
-        app.logger.info("Assigned key user_id=%s key_id=%s server_id=%s", uid, key.id, server.id)
-        return jsonify({"key": key.key_text, "server_id": key.server_id, "key_id": key.id})
+        app.logger.info("Assigned key to user user_id=%s key_id=%s server_id=%s", uid, k.id, k.server_id)
+        return jsonify({"key": k.key_text, "server_id": k.server_id, "key_id": k.id})
 
     @app.post("/api/key/delete")
     @login_required
     def api_delete_key():
         uid = session["user_id"]
-        key = VlessKey.query.filter_by(assigned_user_id=uid).first()
-        if not key:
+        user = User.query.get(uid)
+        if not user:
+            return jsonify({"error": "user not found"}), 404
+
+        if not user.key_id:
             app.logger.info("Delete key requested but no key for user_id=%s", uid)
             return jsonify({"error": "no key to delete"}), 404
 
-        app.logger.info("Unassigned key user_id=%s key_id=%s", uid, key.id)
-        key.assigned_user_id = None
-        key.assigned_at = None
+        app.logger.info("Unassigned key from user user_id=%s key_id=%s", uid, user.key_id)
+        user.key_id = None
         db.session.commit()
         return jsonify({"ok": True})
-
-    # --------------------Routes:Admin--------------------
 
     @app.get("/admin")
     @admin_required
     def admin_panel():
         users = User.query.order_by(User.id.asc()).all()
         servers = Server.query.order_by(Server.id.asc()).all()
+        keys = VlessKey.query.order_by(VlessKey.id.asc()).limit(200).all()
+
+        key_counts = dict(
+            db.session.query(User.key_id, func.count(User.id))
+            .filter(User.key_id.isnot(None))
+            .group_by(User.key_id)
+            .all()
+        )
+
+        server_counts = dict(
+            db.session.query(VlessKey.server_id, func.count(User.id))
+            .join(User, User.key_id == VlessKey.id)
+            .group_by(VlessKey.server_id)
+            .all()
+        )
 
         server_rows = []
         for s in servers:
-            total = VlessKey.query.filter_by(server_id=s.id).count()
-            free = VlessKey.query.filter_by(server_id=s.id, assigned_user_id=None).count()
-            assigned = total - free
-            server_rows.append({
-                "id": s.id,
-                "name": s.name,
-                "total": total,
-                "free": free,
-                "assigned": assigned,
-            })
+            total_keys = VlessKey.query.filter_by(server_id=s.id).count()
+            users_on_server = int(server_counts.get(s.id, 0))
+            server_rows.append({"id": s.id, "name": s.name, "keys_count": total_keys, "users": users_on_server})
 
-        keys = VlessKey.query.order_by(VlessKey.id.asc()).limit(200).all()
-        log_text = tail_file(app.config["LOG_PATH"], max_lines=250)
+        log_text = tail_file(app.config["LOG_PATH"], max_bytes=65536)
 
         return render_template(
             "admin.html",
             users=users,
             servers=server_rows,
             keys=keys,
+            key_counts=key_counts,
             log_text=log_text
         )
 
@@ -350,7 +357,19 @@ def create_app(test_config: dict | None = None):
         app.logger.info("Admin added %d keys to server_id=%s", added, sid)
         return redirect(url_for("admin_panel"))
 
-    # --------------------Errors--------------------
+    @app.post("/admin/delete_key/<int:key_id>")
+    @admin_required
+    def admin_delete_key(key_id: int):
+        key = VlessKey.query.get(key_id)
+        if not key:
+            return redirect(url_for("admin_panel"))
+
+        affected = User.query.filter_by(key_id=key_id).update({"key_id": None})
+        app.logger.info("Admin deleting key id=%s; unassigned users=%s", key_id, affected)
+
+        db.session.delete(key)
+        db.session.commit()
+        return redirect(url_for("admin_panel"))
 
     @app.errorhandler(403)
     def forbidden(_):
@@ -367,3 +386,10 @@ app = create_app()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")))
+#
+
+def _maybe_not_needed(x):
+    y = x
+    if y == x:
+        y = x
+    return y

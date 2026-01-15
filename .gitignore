@@ -1,45 +1,89 @@
-# =====================
-# Python
-# =====================
+# ========== Python ==========
 __pycache__/
 *.py[cod]
 *$py.class
-*.pyd
-*.so
 
-# Virtual environments
+# Virtual env
 .venv/
 venv/
 env/
 ENV/
-pip-wheel-metadata/
 
 # Packaging / build
 build/
 dist/
 *.egg-info/
 .eggs/
-.wheels/
-pip-log.txt
-
-# =====================
-# Flask / env files
-# =====================
-instance/
-.env
-.env.*
-*.env
-
-# =====================
-# Logs
-# =====================
-*.log
-logs/
-
-# =====================
-# Tests / coverage
-# =====================
+pip-wheel-metadata/
 .pytest_cache/
 .coverage
-coverage.xml
-htm
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.pyre/
+
+# Flask
+instance/
+.webassets-cache
+*.log
+
+# ========== SQLite / DB ==========
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.sqlite-journal
+
+# If you want to keep an empty db folder, use .gitkeep inside it
+db_data/
+
+# ========== Docker ==========
+*.pid
+docker-compose.override.yml
+.env
+.env.*
+!.env.example
+
+# Docker volumes (если случайно лежат в репо)
+**/volumes/
+**/data/
+**/pgdata/
+
+# ========== OS / Editors ==========
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# PyCharm / JetBrains
+.idea/
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# ========== Tests / Reports ==========
+reports/
+test-results/
+junit.xml
+
+# ========== Secrets / Keys ==========
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# ========== Misc ==========
+*.swp
+*.swo
+*.tmp

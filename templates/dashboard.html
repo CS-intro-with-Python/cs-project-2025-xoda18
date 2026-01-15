@@ -8,13 +8,13 @@
     <p>Your VLESS key (server_id={{ key.server_id }}):</p>
     <pre id="key">{{ key.key_text }}</pre>
     <div class="row">
-        <button class="btn" id="copyBtn">Copy</button>
-        <button class="btn" id="deleteBtn">Delete key</button>
+        <button class="btn" id="copyBtn" type="button">Copy</button>
+        <button class="btn" id="deleteBtn" type="button">Delete key</button>
     </div>
     <p><small>You can delete and request again (may get another key).</small></p>
     {% else %}
     <p>You don't have a key yet.</p>
-    <button class="btn" id="getBtn">Get key</button>
+    <button class="btn" id="getBtn" type="button">Get key</button>
     {% endif %}
 
     <p class="error" id="err"></p>
@@ -38,7 +38,7 @@
                 errEl.textContent = res.data.error || ("Error " + res.status);
                 return;
             }
-            location.reload();
+            window.location.href = "/dashboard?ts=" + Date.now();
         };
     }
 
@@ -51,7 +51,7 @@
                 errEl.textContent = res.data.error || ("Error " + res.status);
                 return;
             }
-            location.reload();
+            window.location.href = "/dashboard?ts=" + Date.now();
         };
     }
 

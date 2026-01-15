@@ -15,13 +15,12 @@ def test_key_create_and_delete_flow():
         db.session.commit()
 
         s1 = Server(name="S1")
-        s2 = Server(name="S2")
-        db.session.add_all([s1, s2])
+        db.session.add(s1)
         db.session.commit()
 
         db.session.add_all([
             VlessKey(server_id=s1.id, key_text="vless://k1"),
-            VlessKey(server_id=s2.id, key_text="vless://k2"),
+            VlessKey(server_id=s1.id, key_text="vless://k2"),
         ])
         db.session.commit()
 

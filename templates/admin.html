@@ -38,17 +38,15 @@
         <tr>
             <th>ID</th>
             <th>Name</th>
-            <th>Total</th>
-            <th>Assigned</th>
-            <th>Free</th>
+            <th>Keys</th>
+            <th>Users (using keys)</th>
         </tr>
         {% for s in servers %}
         <tr>
             <td>{{ s.id }}</td>
             <td>{{ s.name }}</td>
-            <td>{{ s.total }}</td>
-            <td>{{ s.assigned }}</td>
-            <td>{{ s.free }}</td>
+            <td>{{ s.keys_count }}</td>
+            <td>{{ s.users }}</td>
         </tr>
         {% endfor %}
     </table>
@@ -62,7 +60,8 @@
             <th>Username</th>
             <th>Admin</th>
             <th>Created</th>
-            <th>Has key?</th>
+            <th>Key ID</th>
+            <th>Server</th>
         </tr>
         {% for u in users %}
         <tr>
@@ -70,15 +69,8 @@
             <td>{{ u.username }}</td>
             <td>{{ "yes" if u.is_admin else "no" }}</td>
             <td>{{ u.created_at }}</td>
-            <td>
-                {% set has_key = false %}
-                {% for k in keys %}
-                {% if k.assigned_user_id == u.id %}
-                {% set has_key = true %}
-                {% endif %}
-                {% endfor %}
-                {{ "yes" if has_key else "no" }}
-            </td>
+            <td>{{ u.key_id or "" }}</td>
+            <td>{{ u.key.server_id if u.key else "" }}</td>
         </tr>
         {% endfor %}
     </table>
@@ -90,15 +82,22 @@
         <tr>
             <th>ID</th>
             <th>Server</th>
-            <th>Assigned user</th>
+            <th>Users</th>
             <th>Key (short)</th>
+            <th>Action</th>
         </tr>
         {% for k in keys %}
         <tr>
             <td>{{ k.id }}</td>
             <td>{{ k.server_id }}</td>
-            <td>{{ k.assigned_user_id or "" }}</td>
+            <td>{{ key_counts.get(k.id, 0) }}</td>
             <td><small>{{ (k.key_text[:80] ~ ("..." if k.key_text|length > 80 else "")) }}</small></td>
+            <td>
+                <form method="post" action="{{ url_for('admin_delete_key', key_id=k.id) }}"
+                      onsubmit="return confirm('Delete this key?');">
+                    <button class="btn" type="submit">Delete</button>
+                </form>
+            </td>
         </tr>
         {% endfor %}
     </table>

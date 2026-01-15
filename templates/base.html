@@ -4,93 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ title or "VPN Portal" }}</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 900px;
-            margin: 32px auto;
-            padding: 0 16px;
-        }
-
-        .card {
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            padding: 16px;
-            margin: 16px 0;
-        }
-
-        .row {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 10px 14px;
-            border-radius: 8px;
-            border: 1px solid #333;
-            background: #fff;
-            cursor: pointer;
-            text-decoration: none;
-            color: #000;
-        }
-
-        .btn:hover {
-            background: #f5f5f5;
-        }
-
-        input, textarea, select {
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-        }
-
-        label {
-            font-weight: bold;
-            display: block;
-            margin-bottom: 6px;
-        }
-
-        .error {
-            color: #b00020;
-        }
-
-        pre {
-            background: #f7f7f7;
-            padding: 12px;
-            border-radius: 10px;
-            overflow: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            border-bottom: 1px solid #eee;
-            padding: 8px;
-            text-align: left;
-            vertical-align: top;
-        }
-
-        th {
-            background: #fafafa;
-        }
-
-        small {
-            color: #666;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-<div class="row" style="justify-content: space-between; align-items: center;">
-    <h2 style="margin:0;">VPN Portal</h2>
+<div class="row row-between">
+    <h2 class="site-title">VPN Portal</h2>
     <div>
         {% if session.user_id %}
-        <form method="post" action="{{ url_for('logout') }}" style="display:inline;">
+        <form method="post" action="{{ url_for('logout') }}" class="form-inline">
             <button class="btn" type="submit">Logout</button>
         </form>
         {% endif %}

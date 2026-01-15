@@ -1,5 +1,6 @@
 from app import create_app, db
 
+
 def test_register_login_dashboard():
     app = create_app({
         "TESTING": True,
